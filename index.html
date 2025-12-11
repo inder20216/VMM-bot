@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>VMM Support – WhatsApp Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+body {
+  margin: 0;
+  background: #0b141a;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.app {
+  width: 420px;
+  height: 90vh;
+  background: #111b21;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.header {
+  background: #202c33;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e9edef;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #00a884;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.subtitle {
+  font-size: 11px;
+  color: #8696a0;
+}
+
+.chat {
+  flex: 1;
+  background: #0b141a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='%23161f25' fill-opacity='0.4'%3E%3Cpath d='M0 0h48v48H0zM48 48h48v48H48z'/%3E%3C/g%3E%3C/svg%3E");
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.day {
+  text-align: center;
+  color: #8696a0;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.msg {
+  max-width: 75%;
+  padding: 6px 7px;
+  font-size: 13px;
+  line-height: 1.35;
+  border-radius: 7px;
+  margin-bottom: 6px;
+  position: relative;
+  word-wrap: break-word;
+}
+
+.bot {
+  background: #202c33;
+  color: #e9edef;
+}
+
+.user {
+  background: #005c4b;
+  color: #e9edef;
+  margin-left: auto;
+}
+
+.typing {
+  background: #202c33;
+  color: #8696a0;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-style: italic;
+  max-width: 75%;
+  border-radius: 7px;
+}
+
+.typing::after {
+  content: '...';
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+
+.time {
+  font-size: 10px;
+  color: #8696a0;
+  text-align: right;
+  margin-top: 2px;
+}
+
+.input-bar {
+  background: #202c33;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-bar textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  background: #2a3942;
+  color: #e9edef;
+}
+
+.send {
+  background: #00a884;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.send:disabled {
+  background: #2a3942;
+  cursor: not-allowed;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <div class="header">
+    <div class="avatar">V</div>
+    <div style="flex: 1;">
+      <div class="title">VMM Support Bot</div>
+      <div class="subtitle">Online</div>
+    </div>
+    <button onclick="location.reload()" style="background: transparent; border: none; color: #8696a0; cursor: pointer; font-size: 18px;" title="Start new conversation">🔄</button>
+  </div>
+
+  <div class="chat" id="chat">
+    <div class="day">Today</div>
+    <div class="msg bot">
+      Hello 👋<br>
+      Welcome to VMM Facility Support.<br>
+      Please share your registered mobile number to get started.
+      <div class="time">03:10 PM</div>
+    </div>
+  </div>
+
+  <div class="input-bar">
+    <textarea id="input" rows="1" placeholder="Type a message"></textarea>
+    <button class="send" id="sendBtn" onclick="send()">➤</button>
+  </div>
+</div>
+
+<script>
+const API = "https://inder20216.app.n8n.cloud/webhook/vmm-whatsappbot";
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+
+// Generate unique session ID on page load
+const sessionId = 'vmm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+console.log('Session ID:', sessionId);
+
+function time() {
+  return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function add(text, who) {
+  const d = document.createElement("div");
+  d.className = "msg " + who;
+  d.innerHTML = text.replace(/\n/g, '<br>') + `<div class="time">${time()}</div>`;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  const typing = document.createElement("div");
+  typing.className = "typing";
+  typing.id = "typing-indicator";
+  typing.textContent = "Typing";
+  chat.appendChild(typing);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const typing = document.getElementById("typing-indicator");
+  if (typing) typing.remove();
+}
+
+async function send() {
+  const text = input.value.trim();
+  if (!text) return;
+  
+  input.value = "";
+  sendBtn.disabled = true;
+  add(text, "user");
+  
+  showTyping();
+
+  try {
+    const r = await fetch(API, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ 
+        message: text,
+        sessionId: sessionId  // Send session ID with every request
+      })
+    });
+    const j = await r.json();
+    hideTyping();
+    add(j.reply || j.completion || "Okay", "bot");
+  } catch {
+    hideTyping();
+    add("Technical issue. Please try again.", "bot");
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+input.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+</script>
+</body>
+</html>
